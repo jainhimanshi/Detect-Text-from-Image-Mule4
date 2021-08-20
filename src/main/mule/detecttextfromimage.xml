@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="63be8163-48c2-45d8-8419-a2ff30c35a47" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<flow name="pf_detect-text-from-image_Flow" doc:id="187887ce-9a09-481a-9557-25df087560dc" >
+		<http:listener doc:name="Listener" doc:id="ef644313-26ad-49fb-95cb-a75c57f92b0b" config-ref="HTTP_Listener_config" path="/detectTextFromImage"/>
+		<ee:transform doc:name="Convert Image to base64" doc:id="21b875a6-b3c6-46e1-b386-465f9750b054" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::core::Binaries
+output text/plain
+---
+toBase64(payload.parts[0].content as Binary)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Prepare JSON Request to call Google Cloud Vision API" doc:id="352d8bae-442a-424c-b7d0-08ea1a256d08" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+  "requests": [
+    {
+      "image": {
+        "content": payload
+      },
+      "features": [
+        {
+          "type": "TEXT_DETECTION"
+        }
+      ]
+    }
+  ]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<http:request method="POST" doc:name="Google Cloud Vision API" doc:id="512ddecd-3152-49a6-90ac-e1404fec4342" url='#["https://vision.googleapis.com/v1/images:annotate?key=Abcde"]'>
+		</http:request>
+		<ee:transform doc:name="Final Response" doc:id="ac7907f0-d574-4a4a-845a-40583f95ac53" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
